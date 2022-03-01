@@ -1,0 +1,2 @@
+RASIO TOLAK UKUR BEST WEIGHTS
+w = [0.0, 0.0, 0.1, 0.9]  # weights for [P, R, mAP@0.5, mAP@0.5:0.95] 
