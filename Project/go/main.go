@@ -1,0 +1,137 @@
+/*
+	DONE :
+	Redirect Ketika sudah Upload Gambar
+	Tampilkan Hasil Deteksi
+	Deteksi Gambar dan menghasilkan Lokasi File Hasil Deteksi
+
+	NOTE:
+	YOLOv5s
+	command python
+	python detect.py --source ../go/uploaded-images/107u.jpg --weights ../best.pt --img 500 --project ../go/result-images
+*/
+
+package main
+
+import (
+	"fmt"
+	"html/template"
+	"io"
+	"net/http"
+	"os"
+	"os/exec"
+)
+
+// Lokasi File Hasil Deteksi
+var lokasi map[string]interface{}
+
+func uploadFile(w http.ResponseWriter, r *http.Request) {
+
+	// Parse Input, type nya multipart/form-data dan Handling MAX 10 Mb
+	r.ParseMultipartForm(10 << 20)
+
+	// Mengambil file yang di upload dari form
+	file, handler, err := r.FormFile("myFile")
+	if err != nil {
+		fmt.Println("Gagal mengambil File")
+		fmt.Println(err)
+		return
+	}
+
+	defer file.Close()
+
+	// Check Ukuran File, Header dan Namanya
+	fmt.Println("Uploaded File: %+v\n", handler.Filename)
+	fmt.Println("File Size: %+v\n", handler.Size)
+	fmt.Printf("MIME Header: %+v\n", handler.Header)
+
+	// Buat File di folder uploaded-images
+	dst, err := os.Create(fmt.Sprintf("uploaded-images/%s", handler.Filename))
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	defer dst.Close()
+
+	// Copy File dari Form ke File yang telah dibuat di folder
+	_, err = io.Copy(dst, file)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// Deteksi Gambar Menggunakan YOLOv5
+	cmm := "python ../yolov5/detect.py --source uploaded-images/" + handler.Filename + " --weights ../best.pt --img 500 --project ../go/result-images --name hasildeteksi --exist-ok"
+	// python ../yolov5/detect.py --source uploaded-images/107u.jpg --weights ../best.pt --img 500 --project ../go/result-images --name hasildeteksi --exist-ok
+	cmd := exec.Command("bash", "-c", cmm)
+	cmd.Stdout = os.Stdout
+	err = cmd.Run()
+	if err != nil {
+		fmt.Println(err)
+	}
+	fmt.Println(cmm)
+	// Deklarasi Lokasi Hasil Deteksi dan Masukan kedalam Variable Lokasi
+	dt := "result-images/hasildeteksi/" + handler.Filename
+	lokasi = map[string]interface{}{
+		"lokasifile": dt,
+	}
+}
+
+// PORT Server GOLANG
+var port string = ":9000"
+
+func setupRoutes() {
+
+	// ROUTE Upload / Deteksi
+	http.HandleFunc("/deteksi", func(w http.ResponseWriter, r *http.Request) {
+		uploadFile(w, r)
+		var t, err = template.ParseFiles("result.html")
+		// Jika Error
+		if err != nil {
+			fmt.Println(err.Error())
+			return
+		}
+		// Jika Variable Lokasi Kosong Maka Status Not Found
+		if lokasi == nil {
+			http.Redirect(w, r, "/", http.StatusNotFound)
+			return
+		}
+		t.Execute(w, lokasi)
+	})
+
+	// ROUTE Index
+	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		var t, err = template.ParseFiles("index.html")
+		if err != nil {
+			fmt.Println(err.Error())
+			return
+		}
+
+		t.Execute(w, "index")
+	})
+
+	// ROUTE Instruction
+	http.HandleFunc("/instruction", func(w http.ResponseWriter, r *http.Request) {
+		var t, err = template.ParseFiles("instruction.html")
+		if err != nil {
+			fmt.Println(err.Error())
+			return
+		}
+
+		t.Execute(w, "instruction")
+	})
+
+	// Akses File Seperti CSS, Image, Js, dll
+	http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("static"))))
+	http.Handle("/uploaded-images/", http.StripPrefix("/uploaded-images/", http.FileServer(http.Dir("uploaded-images"))))
+	http.Handle("/result-images/", http.StripPrefix("/result-images/", http.FileServer(http.Dir("result-images"))))
+
+	// Server PORT
+	http.ListenAndServe(port, nil)
+}
+
+func main() {
+	// Main Function
+	fmt.Println("Berjalan di localhost", port)
+	setupRoutes()
+}

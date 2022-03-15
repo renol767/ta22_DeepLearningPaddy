@@ -1,0 +1,135 @@
+<!-- =========================================================
+* Argon Dashboard PRO v1.1.0
+=========================================================
+
+* Product Page: https://www.creative-tim.com/product/argon-dashboard-pro
+* Copyright 2019 Creative Tim (https://www.creative-tim.com)
+
+* Coded by Creative Tim
+
+=========================================================
+
+* The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+ -->
+ <!DOCTYPE html>
+ <html>
+ 
+ <head>
+   <meta charset="utf-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+   <meta name="description" content="Start your development with a Dashboard for Bootstrap 4.">
+   <meta name="author" content="Creative Tim">
+   <title>Dashboard</title>
+   <!-- Favicon -->
+   <link rel="icon" href="static/img/brand/favicon.png" type="image/png">
+   <!-- Fonts -->
+   <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Open+Sans:300,400,600,700">
+   <!-- Icons -->
+   <link rel="stylesheet" href="static/vendor/nucleo/css/nucleo.css" type="text/css">
+   <link rel="stylesheet" href="static/vendor/@fortawesome/fontawesome-free/css/all.min.css" type="text/css">
+   <!-- Argon CSS -->
+   <link rel="stylesheet" href="static/css/argon.css" type="text/css">
+   <style>
+       .dropzone .dz-preview .dz-image {
+            object-fit:scale-down;
+        }
+
+   </style>
+ </head>
+ 
+ <body>
+   <!-- Sidenav -->
+   <nav class="sidenav navbar navbar-vertical fixed-left navbar-expand-xs navbar-light bg-white" id="sidenav-main">
+     <div class="scrollbar-inner">
+       <!-- Brand -->
+       <div class="sidenav-header d-flex align-items-center">
+         <a class="navbar-brand" href="/">
+           <img src="static/img/blue.png" class="navbar-brand-img" alt="..." style="width: 8rem;">
+         </a>
+         <div class="ml-auto">
+           <!-- Sidenav toggler -->
+           <div class="sidenav-toggler d-none d-xl-block" data-action="sidenav-unpin" data-target="#sidenav-main">
+             <div class="sidenav-toggler-inner">
+               <i class="sidenav-toggler-line"></i>
+               <i class="sidenav-toggler-line"></i>
+               <i class="sidenav-toggler-line"></i>
+             </div>
+           </div>
+         </div>
+       </div>
+       <div class="navbar-inner">
+         <!-- Collapse -->
+         <div class="collapse navbar-collapse" id="sidenav-collapse-main">
+           <!-- Nav items -->
+           <ul class="navbar-nav">
+              <li class="nav-item">
+                <a class="nav-link" href="/instruction">
+                  <i class="fas fa-info-circle text-warning"></i>
+                  <span class="nav-link-text">Instruction</span>
+                </a>
+              </li>
+           </ul>
+         </div>
+       </div>
+     </div>
+   </nav>
+   <!-- Main content -->
+   <div class="main-content" id="panel">
+     <!-- Topnav -->
+     <nav class="navbar navbar-top navbar-expand navbar-dark bg-primary border-bottom">
+       
+     </nav>
+     <!-- Header -->
+     <!-- Header -->
+     <div class="header bg-primary pb-6">
+       <div class="container-fluid">
+         <div class="header-body">
+           <div class="row align-items-center py-4">
+             <div class="col-lg-6 col-7">
+               <h6 class="h2 text-white d-inline-block mb-0">Petani Cerdas</h6>
+               <nav aria-label="breadcrumb" class="d-none d-md-inline-block ml-md-4">
+               </nav>
+             </div>
+             <div class="col-lg-6 col-5 text-right">
+             </div>
+           </div>
+         </div>
+       </div>
+     </div>
+     <!-- Page content -->
+     <div class="container-fluid mt--6">
+         <!-- File browser -->
+         <div class="card">
+            <!-- Card header -->
+            <div class="card-header">
+              <h3 class="mb-0">Deteksi menggunakan Citra Gambar</h3>
+              <p class="h5 d-inline-block mb-0">Silahkan pilih gambar citra Lahan padi yang akan dideteksi</p>
+            </div>
+            <!-- Card body -->
+            <div class="card-body">
+            <form class = "file-form" action="http://localhost:9000/deteksi" method="post", enctype="multipart/form-data">
+                <div class="form-group">
+                    <label for="exampleFormControlFile1">File Image (Jpg, Jpeg, Png, jfif)</label>
+                    <input type="file" class="form-control-file" name="myFile" id="myFile" required>
+                </div>
+                <button class="btn btn-success btn-lg mb--6" type="submit">Upload</button> 
+                <br><br><br><br>    
+              </form>
+            </div>
+          </div>
+      </div>
+     </div>
+   </div>
+   <!-- Argon Scripts -->
+   <!-- Core -->
+   <script src="static/vendor/jquery/dist/jquery.min.js"></script>
+   <script src="static/vendor/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+   <script src="static/vendor/js-cookie/js.cookie.js"></script>
+   <script src="static/vendor/jquery.scrollbar/jquery.scrollbar.min.js"></script>
+   <script src="static/vendor/jquery-scroll-lock/dist/jquery-scrollLock.min.js"></script>
+   <script src="static/vendor/dropzone/dist/min/dropzone.min.js"></script>
+   <!-- Argon JS -->
+   <script src="static/js/argon.js"></script>
+ </body>
+ 
+ </html>
