@@ -13,55 +13,54 @@
 package main
 
 import (
+	"context"
 	"fmt"
-	"html/template"
-	"io"
-	"net/http"
+	"log"
 	"os"
 	"os/exec"
+	"time"
+
+	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v2/middleware/cors"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-// Lokasi File Hasil Deteksi
-var lokasi map[string]interface{}
+var collection *mongo.Collection
 
-func uploadFile(w http.ResponseWriter, r *http.Request) {
-
-	// Parse Input, type nya multipart/form-data dan Handling MAX 10 Mb
-	r.ParseMultipartForm(10 << 20)
-
-	// Mengambil file yang di upload dari form
-	file, handler, err := r.FormFile("myFile")
+func showData(c *fiber.Ctx) error {
+	cursor, err := collection.Find(c.Context(), bson.M{})
 	if err != nil {
-		fmt.Println("Gagal mengambil File")
 		fmt.Println(err)
-		return
 	}
+	var imgd []bson.M
 
-	defer file.Close()
-
-	// Check Ukuran File, Header dan Namanya
-	fmt.Println("Uploaded File: %+v\n", handler.Filename)
-	fmt.Println("File Size: %+v\n", handler.Size)
-	fmt.Printf("MIME Header: %+v\n", handler.Header)
-
-	// Buat File di folder uploaded-images
-	dst, err := os.Create(fmt.Sprintf("uploaded-images/%s", handler.Filename))
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+	if err := cursor.All(c.Context(), &imgd); err != nil {
+		return c.JSON(fiber.Map{"status": 500, "message": "Server error", "data": nil})
 	}
+	return c.JSON(fiber.Map{"status": 200, "message": "Success Get Data", "data": imgd})
+}
 
-	defer dst.Close()
-
-	// Copy File dari Form ke File yang telah dibuat di folder
-	_, err = io.Copy(dst, file)
+// SERVICES
+func handleImageServices(c *fiber.Ctx) error {
+	file, err := c.FormFile("image")
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+		log.Println("Image Upload Error", err)
+		return c.JSON(fiber.Map{"status": 500, "message": "Server error", "data": nil})
+	}
+	filename := file.Filename
+	image := fmt.Sprintf("%s", filename)
+
+	err = c.SaveFile(file, fmt.Sprintf("./uploaded-images/%s", image))
+
+	if err != nil {
+		log.Println("image save error --> ", err)
+		return c.JSON(fiber.Map{"status": 500, "message": "Server error", "data": nil})
 	}
 
 	// Deteksi Gambar Menggunakan YOLOv5
-	cmm := "python ../yolov5/detect.py --source uploaded-images/" + handler.Filename + " --weights ../best.pt --img 500 --project ../go/result-images --name hasildeteksi --exist-ok"
+	cmm := "python ../yolov5/detect.py --source uploaded-images/" + file.Filename + " --weights ../best.pt --img 500 --project ../go/result-images --name hasildeteksi --exist-ok"
 	// python ../yolov5/detect.py --source uploaded-images/107u.jpg --weights ../best.pt --img 500 --project ../go/result-images --name hasildeteksi --exist-ok
 	cmd := exec.Command("bash", "-c", cmm)
 	cmd.Stdout = os.Stdout
@@ -70,68 +69,63 @@ func uploadFile(w http.ResponseWriter, r *http.Request) {
 		fmt.Println(err)
 	}
 	fmt.Println(cmm)
-	// Deklarasi Lokasi Hasil Deteksi dan Masukan kedalam Variable Lokasi
-	dt := "result-images/hasildeteksi/" + handler.Filename
-	lokasi = map[string]interface{}{
-		"lokasifile": dt,
+
+	imgUrl := fmt.Sprintf("http://localhost:9000/result/%s", image)
+	dataToStore := bson.D{
+		{"imgUrlData", imgUrl},
+		{"timestamp", time.Now().Format(time.RFC3339)},
 	}
+
+	ins, errsa := collection.InsertOne(context.Background(), dataToStore)
+	if errsa != nil {
+		fmt.Println(errsa)
+	}
+	fmt.Println("Success Insert Data", ins.InsertedID)
+
+	// Create meta data for response
+	data := map[string]interface{}{
+		"imageUrl": imgUrl,
+		"header":   file.Header,
+		"size":     file.Size,
+	}
+
+	// Return JSON
+	return c.JSON(fiber.Map{"status": 200, "message": "Image Upload Success", "data": data})
 }
 
-// PORT Server GOLANG
-var port string = ":9000"
-
-func setupRoutes() {
-
-	// ROUTE Upload / Deteksi
-	http.HandleFunc("/deteksi", func(w http.ResponseWriter, r *http.Request) {
-		uploadFile(w, r)
-		var t, err = template.ParseFiles("result.html")
-		// Jika Error
-		if err != nil {
-			fmt.Println(err.Error())
-			return
-		}
-		// Jika Variable Lokasi Kosong Maka Status Not Found
-		if lokasi == nil {
-			http.Redirect(w, r, "/", http.StatusNotFound)
-			return
-		}
-		t.Execute(w, lokasi)
-	})
-
-	// ROUTE Index
-	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		var t, err = template.ParseFiles("index.html")
-		if err != nil {
-			fmt.Println(err.Error())
-			return
-		}
-
-		t.Execute(w, "index")
-	})
-
-	// ROUTE Instruction
-	http.HandleFunc("/instruction", func(w http.ResponseWriter, r *http.Request) {
-		var t, err = template.ParseFiles("instruction.html")
-		if err != nil {
-			fmt.Println(err.Error())
-			return
-		}
-
-		t.Execute(w, "instruction")
-	})
-
-	// Akses File Seperti CSS, Image, Js, dll
-	http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("static"))))
-	http.Handle("/uploaded-images/", http.StripPrefix("/uploaded-images/", http.FileServer(http.Dir("uploaded-images"))))
-	http.Handle("/result-images/", http.StripPrefix("/result-images/", http.FileServer(http.Dir("result-images"))))
-
-	// Server PORT
-	http.ListenAndServe(port, nil)
-}
+var port = ":9000"
 
 func main() {
+
+	// MongoDB
+	clientOptions := options.Client().ApplyURI("mongodb://localhost:27017")
+
+	client, err := mongo.Connect(context.TODO(), clientOptions)
+	if err != nil {
+		fmt.Println("Mongo Connect ERROR : ", err)
+		os.Exit(1)
+	}
+
+	collection = client.Database("paddy").Collection("imageData")
+
 	// Main Function
 	fmt.Println("Berjalan di localhost", port)
-	setupRoutes()
+
+	// FIBER
+	app := fiber.New()
+
+	// Communication using HTTP and Allow Cors
+	app.Use(cors.New())
+
+	// Akses Folder
+	app.Static("/result", "result-images/hasildeteksi")
+
+	// Get List Deteksi
+	app.Get("/imageDetectionData", showData)
+
+	// Upload Image Services Route
+	app.Post("/image-services", handleImageServices)
+
+	log.Fatal(app.Listen(port))
+
 }
